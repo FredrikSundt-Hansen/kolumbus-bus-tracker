@@ -1,7 +1,11 @@
 import urllib.request
 import json
 import ssl
+import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def find_departures_timslot(data, now, end_time, target_lines):
     departures = []
@@ -38,10 +42,11 @@ def print_departures(valid_departures):
         print(f"Line {line_ref} at {dep_time.strftime('%H:%M')}")
 
 def main():
-    stop_id = "NSR:Quay:49217"
-    target_lines = ["5", "6"]
-    minutes_ahead = 60
-    output_file = "output.txt"
+    stop_id = os.getenv("STOP_ID")
+    target_lines_str = os.getenv("TARGET_LINES", "")
+    target_lines = [line.strip() for line in target_lines_str.split(",") if line.strip()]
+    minutes_ahead = int(os.getenv("MINUTES_AHEAD", "60"))
+    output_file = os.getenv("OUTPUT_FILE", "output.txt")
     
     url = f"https://api.kolumbus.no/api/platforms/{stop_id}/departures"
     
@@ -55,6 +60,7 @@ def main():
                 data = json.loads(response.read().decode('utf-8'))
             else:
                 print(f"Failed to fetch data. Status code: {response.getcode()}")
+                return
 
         now = datetime.now()
         end_time = now + timedelta(minutes=minutes_ahead)
@@ -63,7 +69,7 @@ def main():
 
         print_departures(valid_departures)
 
-        time_strings = [t.strftime("%H:%M") for t, _, _ in valid_departures]
+        time_strings = [t.strftime("%H:%M") for t, _ in valid_departures]
         output_content = ";".join(time_strings)
 
         with open(output_file, "w") as f:
